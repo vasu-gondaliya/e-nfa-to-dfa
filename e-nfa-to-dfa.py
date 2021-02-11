@@ -1,5 +1,5 @@
+# Author : Vasu Gondaliya
 from graphviz import Digraph
-import numpy as np
 
 
 class NFA:
@@ -49,33 +49,6 @@ class NFA:
         return "Q : " + str(self.states)+"\nΣ : "+str(self.alphabets)+"\nq0 : "+str(self.start)+"\nF : "+str(self.finals)+"\nδ : \n"+str(self.transition_table)
 
 
-print("NFA to DFA")
-# nfa_input = NFA(3, ['s1', 's2', 's3'], 2, ['0', '1'], 's1', 1, ['s3'], 3, [
-#                 ['s1', '0', 's2'], ['s2', '1', 's3'], ['s1', 'e', 's3']])
-nfa_input = NFA.fromuser()
-# print(repr(nfa_input))
-
-nfa = Digraph()
-is_final = dict()
-for x in nfa_input.states:
-    is_final[x] = 0
-nfa.attr('node', shape='doublecircle')
-for x in nfa_input.finals:
-    nfa.node(x)
-    is_final[x] = 1
-nfa.attr('node', shape='circle')
-for x in nfa_input.states:
-    if(is_final[x] == 0):
-        nfa.node(x)
-nfa.attr('node', shape='none')
-nfa.node('')
-for x in nfa_input.transitions:
-    nfa.edge(x[0], x[2], label=x[1])
-
-nfa.edge('', nfa_input.start)
-nfa.render('nfa', view=True)
-
-
 def e_closure(inp, state):
     closure = dict()
     closure[inp.states_dict[state]] = 0
@@ -97,24 +70,46 @@ def state_name(state_list, states_dict):
     return name
 
 
-def is_final(state_list, finals, inp):
+def is_final_dfa(state_list, inp):
     for x in state_list:
-        for y in finals:
+        for y in inp.finals:
             if(x == inp.states_dict[y]):
                 return True
     return False
 
 
+print("E-NFA to DFA")
+nfa_input = NFA(3, ['s1', 's2', 's3'], 2, ['0', '1'], 's1', 1, ['s3'], 3, [
+                ['s1', '0', 's2'], ['s2', '1', 's3'], ['s1', 'e', 's3']])
+# nfa_input = NFA.fromuser()
+nfa = Digraph()
+is_final = dict()
+for x in nfa_input.states:
+    is_final[x] = 0
+nfa.attr('node', shape='doublecircle')
+for x in nfa_input.finals:
+    nfa.node(x)
+    is_final[x] = 1
+nfa.attr('node', shape='circle')
+for x in nfa_input.states:
+    if(is_final[x] == 0):
+        nfa.node(x)
+nfa.attr('node', shape='none')
+nfa.node('')
+for x in nfa_input.transitions:
+    nfa.edge(x[0], x[2], label=('ε', x[1])[x[1] != 'e'])
+nfa.edge('', nfa_input.start)
+nfa.render('nfa', view=True)
+
 dfa = Digraph()
 dfa.attr('node', shape='none')
 dfa.node('')
-dfa_states = []
+dfa_states = list()
 epsilon_closure = dict()
 for x in nfa_input.states:
     epsilon_closure[x] = list(e_closure(nfa_input, x))
 dfa_states.append(epsilon_closure[nfa_input.start])
-
-if(is_final(list(dfa_states[0]), nfa_input.finals, nfa_input)):
+if(is_final_dfa(dfa_states[0], nfa_input)):
     dfa.attr('node', shape='doublecircle')
 else:
     dfa.attr('node', shape='circle')
@@ -122,8 +117,6 @@ dfa.node(state_name(list(dfa_states[0]), nfa_input.states_dict))
 dfa.edge('', state_name(dfa_states[0], nfa_input.states_dict))
 dfa_states_exist = list()
 dfa_states_exist.append(epsilon_closure[nfa_input.start])
-# δ'(A, 0) = ε-closure {δ(ε-closure(A), 0) }
-
 while(len(dfa_states) > 0):
     cur_state = dfa_states.pop(0)
     for al in range((nfa_input.no_alphabet) - 1):
@@ -138,20 +131,20 @@ while(len(dfa_states) > 0):
             if list(to_state) not in dfa_states_exist:
                 dfa_states.append(list(to_state))
                 dfa_states_exist.append(list(to_state))
-                if(is_final(list(to_state), nfa_input.finals, nfa_input)):
+                if(is_final_dfa(list(to_state), nfa_input)):
                     dfa.attr('node', shape='doublecircle')
                 else:
                     dfa.attr('node', shape='circle')
                 dfa.node(state_name(list(to_state), nfa_input.states_dict))
             dfa.edge(state_name(cur_state, nfa_input.states_dict), state_name(
                 list(to_state), nfa_input.states_dict), label=nfa_input.alphabets[al])
-        else:  # 𝛟
+        else:
             if (-1) not in dfa_states_exist:
                 dfa.attr('node', shape='circle')
-                dfa.node('𝛟')
+                dfa.node('ϕ')
                 for alpha in range(nfa_input.no_alphabet - 1):
-                    dfa.edge('𝛟', '𝛟', nfa_input.alphabets[alpha])
+                    dfa.edge('ϕ', 'ϕ', nfa_input.alphabets[alpha])
                 dfa_states_exist.append(-1)
             dfa.edge(state_name(cur_state, nfa_input.states_dict),
-                     '𝛟', label=nfa_input.alphabets[al])
+                     'ϕ', label=nfa_input.alphabets[al])
 dfa.render('dfa', view=True)
